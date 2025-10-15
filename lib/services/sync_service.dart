@@ -38,6 +38,9 @@ class SyncService {
 
     debugPrint('SyncService: Initializing for user ${_authService.userId}');
     
+    // Create welcome note if this is first time
+    await _isarService.createWelcomeNoteIfNeeded(_authService.userId!);
+    
     // Start listening to Firestore changes
     _startFirestoreListener();
     

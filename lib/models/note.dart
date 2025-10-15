@@ -38,6 +38,12 @@ class Note {
   /// Last sync timestamp (null if never synced)
   DateTime? lastSyncedAt;
 
+  /// Shared with users (list of user IDs with access)
+  List<String> sharedWith = [];
+
+  /// Sharing permissions: 'owner', 'editor', 'viewer'
+  String permission = 'owner';
+
   /// Default constructor for Isar
   Note() {
     final now = DateTime.now();
@@ -55,6 +61,8 @@ class Note {
     String? userId,
     String? syncStatus,
     DateTime? lastSyncedAt,
+    List<String>? sharedWith,
+    String? permission,
   }) {
     final note = Note();
     note.id = id ?? this.id;
@@ -65,6 +73,8 @@ class Note {
     note.userId = userId ?? this.userId;
     note.syncStatus = syncStatus ?? this.syncStatus;
     note.lastSyncedAt = lastSyncedAt ?? this.lastSyncedAt;
+    note.sharedWith = sharedWith ?? List.from(this.sharedWith);
+    note.permission = permission ?? this.permission;
     return note;
   }
 
@@ -94,6 +104,8 @@ class Note {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'userId': userId,
+      'sharedWith': sharedWith,
+      'permission': permission,
     };
   }
 
@@ -106,10 +118,21 @@ class Note {
     note.createdAt = DateTime.parse(data['createdAt'] ?? DateTime.now().toIso8601String());
     note.updatedAt = DateTime.parse(data['updatedAt'] ?? DateTime.now().toIso8601String());
     note.userId = data['userId'] ?? '';
+    note.sharedWith = List<String>.from(data['sharedWith'] ?? []);
+    note.permission = data['permission'] ?? 'owner';
     note.syncStatus = 'synced';
     note.lastSyncedAt = DateTime.now();
     return note;
   }
+  
+  /// Check if note is shared
+  bool get isShared => sharedWith.isNotEmpty;
+  
+  /// Check if user can edit (owner or editor)
+  bool get canEdit => permission == 'owner' || permission == 'editor';
+  
+  /// Check if user is owner
+  bool get isOwner => permission == 'owner';
 
   @override
   String toString() {

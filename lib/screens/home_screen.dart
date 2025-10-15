@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import '../services/isar_service.dart';
 import '../services/sync_service.dart';
 import '../theme/app_colors.dart';
-import 'note_editor_screen.dart';
+import 'notes_list_screen.dart';
 
 /// HomeScreen
 /// Main dashboard after authentication
-/// Phase 2: Simple screen with logout and access to the note editor
-/// Phase 3: Added cloud sync initialization
+/// Phase 4: Shows notes list with multi-note management
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -35,7 +33,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final AuthService authService = AuthService();
-    final IsarService isarService = IsarService();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -64,75 +61,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Welcome message
-              Text(
-                'Welcome to SyncPad!',
-                style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                      fontSize: 28,
-                    ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'You are now signed in',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: isDark
-                          ? AppColors.darkTextSecondary
-                          : AppColors.lightTextSecondary,
-                    ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 48),
-
-              // Open note editor button
-              ElevatedButton.icon(
-                onPressed: () => _openNoteEditor(context, isarService),
-                icon: const Icon(Icons.edit_note),
-                label: const Text('Open Note Editor'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 16,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Info text
-              Text(
-                'Phase 2: Authentication Complete\nPhase 3 will add notes list',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: isDark
-                          ? AppColors.darkTextSecondary
-                          : AppColors.lightTextSecondary,
-                    ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
+      body: const NotesListScreen(),
     );
-  }
-
-  /// Open the note editor with the default note
-  Future<void> _openNoteEditor(BuildContext context, IsarService isarService) async {
-    // Get or create the default note
-    final note = await isarService.getOrCreateDefaultNote();
-
-    if (context.mounted) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => NoteEditorScreen(noteId: note.id),
-        ),
-      );
-    }
   }
 
   /// Handle logout

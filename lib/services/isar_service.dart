@@ -135,21 +135,19 @@ class IsarService {
     }).toList();
   }
 
-  /// Get or create the default note
-  /// For Phase 1, we use a single hardcoded note
-  /// Returns the note with ID 1, creating it if it doesn't exist
-  Future<Note> getOrCreateDefaultNote() async {
-    Note? note = await getNote(1);
+  /// Create initial welcome note if no notes exist
+  Future<void> createWelcomeNoteIfNeeded(String userId) async {
+    final count = await getNotesCount();
     
-    if (note == null) {
-      // Create the default note
-      note = Note()
-        ..id = 1
+    if (count == 0) {
+      // Create welcome note
+      final welcomeNote = Note()
         ..title = 'Welcome to SyncPad'
-        ..content = 'Start writing your thoughts here...\n\nThis is your offline-first note-taking app.';
-      await createNote(note);
+        ..content = 'Start writing your thoughts here...\n\nThis is your offline-first note-taking app.'
+        ..userId = userId
+        ..syncStatus = 'pending';
+      
+      await createNote(welcomeNote);
     }
-    
-    return note;
   }
 }

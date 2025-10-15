@@ -17,53 +17,78 @@ const NoteSchema = CollectionSchema(
   name: r'Note',
   id: 6284318083599466921,
   properties: {
-    r'content': PropertySchema(
+    r'canEdit': PropertySchema(
       id: 0,
+      name: r'canEdit',
+      type: IsarType.bool,
+    ),
+    r'content': PropertySchema(
+      id: 1,
       name: r'content',
       type: IsarType.string,
     ),
     r'createdAt': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
     r'displayTitle': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'displayTitle',
       type: IsarType.string,
     ),
     r'isEmpty': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'isEmpty',
       type: IsarType.bool,
     ),
+    r'isOwner': PropertySchema(
+      id: 5,
+      name: r'isOwner',
+      type: IsarType.bool,
+    ),
+    r'isShared': PropertySchema(
+      id: 6,
+      name: r'isShared',
+      type: IsarType.bool,
+    ),
     r'lastSyncedAt': PropertySchema(
-      id: 4,
+      id: 7,
       name: r'lastSyncedAt',
       type: IsarType.dateTime,
     ),
+    r'permission': PropertySchema(
+      id: 8,
+      name: r'permission',
+      type: IsarType.string,
+    ),
     r'preview': PropertySchema(
-      id: 5,
+      id: 9,
       name: r'preview',
       type: IsarType.string,
     ),
+    r'sharedWith': PropertySchema(
+      id: 10,
+      name: r'sharedWith',
+      type: IsarType.stringList,
+    ),
     r'syncStatus': PropertySchema(
-      id: 6,
+      id: 11,
       name: r'syncStatus',
       type: IsarType.string,
     ),
     r'title': PropertySchema(
-      id: 7,
+      id: 12,
       name: r'title',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 8,
+      id: 13,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'userId': PropertySchema(
-      id: 9,
+      id: 14,
       name: r'userId',
       type: IsarType.string,
     )
@@ -130,7 +155,15 @@ int _noteEstimateSize(
   var bytesCount = offsets.last;
   bytesCount += 3 + object.content.length * 3;
   bytesCount += 3 + object.displayTitle.length * 3;
+  bytesCount += 3 + object.permission.length * 3;
   bytesCount += 3 + object.preview.length * 3;
+  bytesCount += 3 + object.sharedWith.length * 3;
+  {
+    for (var i = 0; i < object.sharedWith.length; i++) {
+      final value = object.sharedWith[i];
+      bytesCount += value.length * 3;
+    }
+  }
   bytesCount += 3 + object.syncStatus.length * 3;
   bytesCount += 3 + object.title.length * 3;
   bytesCount += 3 + object.userId.length * 3;
@@ -143,16 +176,21 @@ void _noteSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.content);
-  writer.writeDateTime(offsets[1], object.createdAt);
-  writer.writeString(offsets[2], object.displayTitle);
-  writer.writeBool(offsets[3], object.isEmpty);
-  writer.writeDateTime(offsets[4], object.lastSyncedAt);
-  writer.writeString(offsets[5], object.preview);
-  writer.writeString(offsets[6], object.syncStatus);
-  writer.writeString(offsets[7], object.title);
-  writer.writeDateTime(offsets[8], object.updatedAt);
-  writer.writeString(offsets[9], object.userId);
+  writer.writeBool(offsets[0], object.canEdit);
+  writer.writeString(offsets[1], object.content);
+  writer.writeDateTime(offsets[2], object.createdAt);
+  writer.writeString(offsets[3], object.displayTitle);
+  writer.writeBool(offsets[4], object.isEmpty);
+  writer.writeBool(offsets[5], object.isOwner);
+  writer.writeBool(offsets[6], object.isShared);
+  writer.writeDateTime(offsets[7], object.lastSyncedAt);
+  writer.writeString(offsets[8], object.permission);
+  writer.writeString(offsets[9], object.preview);
+  writer.writeStringList(offsets[10], object.sharedWith);
+  writer.writeString(offsets[11], object.syncStatus);
+  writer.writeString(offsets[12], object.title);
+  writer.writeDateTime(offsets[13], object.updatedAt);
+  writer.writeString(offsets[14], object.userId);
 }
 
 Note _noteDeserialize(
@@ -162,14 +200,16 @@ Note _noteDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = Note();
-  object.content = reader.readString(offsets[0]);
-  object.createdAt = reader.readDateTime(offsets[1]);
+  object.content = reader.readString(offsets[1]);
+  object.createdAt = reader.readDateTime(offsets[2]);
   object.id = id;
-  object.lastSyncedAt = reader.readDateTimeOrNull(offsets[4]);
-  object.syncStatus = reader.readString(offsets[6]);
-  object.title = reader.readString(offsets[7]);
-  object.updatedAt = reader.readDateTime(offsets[8]);
-  object.userId = reader.readString(offsets[9]);
+  object.lastSyncedAt = reader.readDateTimeOrNull(offsets[7]);
+  object.permission = reader.readString(offsets[8]);
+  object.sharedWith = reader.readStringList(offsets[10]) ?? [];
+  object.syncStatus = reader.readString(offsets[11]);
+  object.title = reader.readString(offsets[12]);
+  object.updatedAt = reader.readDateTime(offsets[13]);
+  object.userId = reader.readString(offsets[14]);
   return object;
 }
 
@@ -181,24 +221,34 @@ P _noteDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readString(offset)) as P;
-    case 1:
-      return (reader.readDateTime(offset)) as P;
-    case 2:
-      return (reader.readString(offset)) as P;
-    case 3:
       return (reader.readBool(offset)) as P;
-    case 4:
-      return (reader.readDateTimeOrNull(offset)) as P;
-    case 5:
+    case 1:
       return (reader.readString(offset)) as P;
-    case 6:
-      return (reader.readString(offset)) as P;
-    case 7:
-      return (reader.readString(offset)) as P;
-    case 8:
+    case 2:
       return (reader.readDateTime(offset)) as P;
+    case 3:
+      return (reader.readString(offset)) as P;
+    case 4:
+      return (reader.readBool(offset)) as P;
+    case 5:
+      return (reader.readBool(offset)) as P;
+    case 6:
+      return (reader.readBool(offset)) as P;
+    case 7:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 8:
+      return (reader.readString(offset)) as P;
     case 9:
+      return (reader.readString(offset)) as P;
+    case 10:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 11:
+      return (reader.readString(offset)) as P;
+    case 12:
+      return (reader.readString(offset)) as P;
+    case 13:
+      return (reader.readDateTime(offset)) as P;
+    case 14:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -532,6 +582,15 @@ extension NoteQueryWhere on QueryBuilder<Note, Note, QWhereClause> {
 }
 
 extension NoteQueryFilter on QueryBuilder<Note, Note, QFilterCondition> {
+  QueryBuilder<Note, Note, QAfterFilterCondition> canEditEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'canEdit',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterFilterCondition> contentEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -904,6 +963,24 @@ extension NoteQueryFilter on QueryBuilder<Note, Note, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterFilterCondition> isOwnerEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'isOwner',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> isSharedEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'isShared',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterFilterCondition> lastSyncedAtIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -969,6 +1046,136 @@ extension NoteQueryFilter on QueryBuilder<Note, Note, QFilterCondition> {
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> permissionEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'permission',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> permissionGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'permission',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> permissionLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'permission',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> permissionBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'permission',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> permissionStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'permission',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> permissionEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'permission',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> permissionContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'permission',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> permissionMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'permission',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> permissionIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'permission',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> permissionIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'permission',
+        value: '',
       ));
     });
   }
@@ -1098,6 +1305,221 @@ extension NoteQueryFilter on QueryBuilder<Note, Note, QFilterCondition> {
         property: r'preview',
         value: '',
       ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> sharedWithElementEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'sharedWith',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> sharedWithElementGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'sharedWith',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> sharedWithElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'sharedWith',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> sharedWithElementBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'sharedWith',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> sharedWithElementStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'sharedWith',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> sharedWithElementEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'sharedWith',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> sharedWithElementContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'sharedWith',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> sharedWithElementMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'sharedWith',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> sharedWithElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'sharedWith',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      sharedWithElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'sharedWith',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> sharedWithLengthEqualTo(
+      int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sharedWith',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> sharedWithIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sharedWith',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> sharedWithIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sharedWith',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> sharedWithLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sharedWith',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> sharedWithLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sharedWith',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> sharedWithLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sharedWith',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
     });
   }
 
@@ -1546,6 +1968,18 @@ extension NoteQueryObject on QueryBuilder<Note, Note, QFilterCondition> {}
 extension NoteQueryLinks on QueryBuilder<Note, Note, QFilterCondition> {}
 
 extension NoteQuerySortBy on QueryBuilder<Note, Note, QSortBy> {
+  QueryBuilder<Note, Note, QAfterSortBy> sortByCanEdit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'canEdit', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByCanEditDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'canEdit', Sort.desc);
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterSortBy> sortByContent() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'content', Sort.asc);
@@ -1594,6 +2028,30 @@ extension NoteQuerySortBy on QueryBuilder<Note, Note, QSortBy> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterSortBy> sortByIsOwner() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isOwner', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByIsOwnerDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isOwner', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByIsShared() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isShared', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByIsSharedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isShared', Sort.desc);
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterSortBy> sortByLastSyncedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastSyncedAt', Sort.asc);
@@ -1603,6 +2061,18 @@ extension NoteQuerySortBy on QueryBuilder<Note, Note, QSortBy> {
   QueryBuilder<Note, Note, QAfterSortBy> sortByLastSyncedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastSyncedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByPermission() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'permission', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByPermissionDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'permission', Sort.desc);
     });
   }
 
@@ -1668,6 +2138,18 @@ extension NoteQuerySortBy on QueryBuilder<Note, Note, QSortBy> {
 }
 
 extension NoteQuerySortThenBy on QueryBuilder<Note, Note, QSortThenBy> {
+  QueryBuilder<Note, Note, QAfterSortBy> thenByCanEdit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'canEdit', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByCanEditDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'canEdit', Sort.desc);
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterSortBy> thenByContent() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'content', Sort.asc);
@@ -1728,6 +2210,30 @@ extension NoteQuerySortThenBy on QueryBuilder<Note, Note, QSortThenBy> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterSortBy> thenByIsOwner() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isOwner', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByIsOwnerDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isOwner', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByIsShared() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isShared', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByIsSharedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isShared', Sort.desc);
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterSortBy> thenByLastSyncedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastSyncedAt', Sort.asc);
@@ -1737,6 +2243,18 @@ extension NoteQuerySortThenBy on QueryBuilder<Note, Note, QSortThenBy> {
   QueryBuilder<Note, Note, QAfterSortBy> thenByLastSyncedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastSyncedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByPermission() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'permission', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByPermissionDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'permission', Sort.desc);
     });
   }
 
@@ -1802,6 +2320,12 @@ extension NoteQuerySortThenBy on QueryBuilder<Note, Note, QSortThenBy> {
 }
 
 extension NoteQueryWhereDistinct on QueryBuilder<Note, Note, QDistinct> {
+  QueryBuilder<Note, Note, QDistinct> distinctByCanEdit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'canEdit');
+    });
+  }
+
   QueryBuilder<Note, Note, QDistinct> distinctByContent(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -1828,9 +2352,28 @@ extension NoteQueryWhereDistinct on QueryBuilder<Note, Note, QDistinct> {
     });
   }
 
+  QueryBuilder<Note, Note, QDistinct> distinctByIsOwner() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'isOwner');
+    });
+  }
+
+  QueryBuilder<Note, Note, QDistinct> distinctByIsShared() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'isShared');
+    });
+  }
+
   QueryBuilder<Note, Note, QDistinct> distinctByLastSyncedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'lastSyncedAt');
+    });
+  }
+
+  QueryBuilder<Note, Note, QDistinct> distinctByPermission(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'permission', caseSensitive: caseSensitive);
     });
   }
 
@@ -1838,6 +2381,12 @@ extension NoteQueryWhereDistinct on QueryBuilder<Note, Note, QDistinct> {
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'preview', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Note, Note, QDistinct> distinctBySharedWith() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'sharedWith');
     });
   }
 
@@ -1876,6 +2425,12 @@ extension NoteQueryProperty on QueryBuilder<Note, Note, QQueryProperty> {
     });
   }
 
+  QueryBuilder<Note, bool, QQueryOperations> canEditProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'canEdit');
+    });
+  }
+
   QueryBuilder<Note, String, QQueryOperations> contentProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'content');
@@ -1900,15 +2455,39 @@ extension NoteQueryProperty on QueryBuilder<Note, Note, QQueryProperty> {
     });
   }
 
+  QueryBuilder<Note, bool, QQueryOperations> isOwnerProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'isOwner');
+    });
+  }
+
+  QueryBuilder<Note, bool, QQueryOperations> isSharedProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'isShared');
+    });
+  }
+
   QueryBuilder<Note, DateTime?, QQueryOperations> lastSyncedAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'lastSyncedAt');
     });
   }
 
+  QueryBuilder<Note, String, QQueryOperations> permissionProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'permission');
+    });
+  }
+
   QueryBuilder<Note, String, QQueryOperations> previewProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'preview');
+    });
+  }
+
+  QueryBuilder<Note, List<String>, QQueryOperations> sharedWithProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'sharedWith');
     });
   }
 
