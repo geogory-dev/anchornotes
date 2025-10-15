@@ -239,9 +239,6 @@ class _AuthScreenState extends State<AuthScreen> {
                       'assets/google_logo.png',
                       height: 20,
                       width: 20,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(Icons.g_mobiledata, size: 20);
-                      },
                     ),
                     label: const Text('Sign in with Google'),
                     style: OutlinedButton.styleFrom(

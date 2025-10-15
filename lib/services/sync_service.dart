@@ -204,15 +204,22 @@ class SyncService {
       debugPrint('SyncService: Adding new note ${remoteNote.id} from remote');
       await _isarService.createNote(remoteNote);
     } else {
-      // Conflict resolution: Last Write Wins
-      if (remoteNote.updatedAt.isAfter(localNote.updatedAt)) {
-        debugPrint('SyncService: Remote note ${remoteNote.id} is newer, updating local');
-        await _isarService.updateNote(remoteNote);
-      } else {
-        debugPrint('SyncService: Local note ${remoteNote.id} is newer, keeping local');
-        // Local is newer, push to remote
-        await pushNote(localNote);
+      // Check if content is different
+      final isDifferent = remoteNote.title != localNote.title || 
+                         remoteNote.content != localNote.content;
+      
+      if (!isDifferent) {
+        debugPrint('SyncService: Note ${remoteNote.id} content is same, skipping');
+        return;
       }
+      
+      debugPrint('SyncService: Content changed - Remote: "${remoteNote.content.substring(0, 30)}..." vs Local: "${localNote.content.substring(0, 30)}..."');
+      debugPrint('SyncService: Remote updatedAt: ${remoteNote.updatedAt}, Local updatedAt: ${localNote.updatedAt}');
+      
+      // If content is different, always update from remote
+      // This allows manual edits from Firebase Console to work
+      debugPrint('SyncService: Content is different, updating from remote');
+      await _isarService.updateNote(remoteNote);
     }
   }
 

@@ -44,6 +44,37 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     // Add listeners for auto-save
     _titleController.addListener(_onTextChanged);
     _contentController.addListener(_onTextChanged);
+    
+    // Start watching for remote changes
+    _watchForRemoteChanges();
+  }
+  
+  /// Watch for remote changes from Firestore
+  void _watchForRemoteChanges() {
+    // Listen to changes for this specific note
+    _isarService.watchNote(widget.noteId).listen((note) {
+      if (note != null && mounted) {
+        // Only update if the note changed remotely (not from local typing)
+        if (note.updatedAt.isAfter(_currentNote?.updatedAt ?? DateTime(2000))) {
+          // Check if content is different from what's in the text fields
+          if (note.title != _titleController.text || note.content != _contentController.text) {
+            setState(() {
+              _currentNote = note;
+              _titleController.text = note.title;
+              _contentController.text = note.content;
+            });
+            
+            // Show a snackbar to notify user
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Note updated from another device'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        }
+      }
+    });
   }
 
   @override
