@@ -29,6 +29,15 @@ class Note {
   @Index()
   late DateTime updatedAt;
 
+  /// User ID who owns this note (for multi-user support)
+  String userId = '';
+
+  /// Sync status: 'synced', 'pending', 'error'
+  String syncStatus = 'pending';
+
+  /// Last sync timestamp (null if never synced)
+  DateTime? lastSyncedAt;
+
   /// Default constructor for Isar
   Note() {
     final now = DateTime.now();
@@ -43,6 +52,9 @@ class Note {
     String? content,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? userId,
+    String? syncStatus,
+    DateTime? lastSyncedAt,
   }) {
     final note = Note();
     note.id = id ?? this.id;
@@ -50,6 +62,9 @@ class Note {
     note.content = content ?? this.content;
     note.createdAt = createdAt ?? this.createdAt;
     note.updatedAt = updatedAt ?? this.updatedAt;
+    note.userId = userId ?? this.userId;
+    note.syncStatus = syncStatus ?? this.syncStatus;
+    note.lastSyncedAt = lastSyncedAt ?? this.lastSyncedAt;
     return note;
   }
 
@@ -70,8 +85,34 @@ class Note {
     return title;
   }
 
+  /// Convert Note to Firestore document (Map)
+  Map<String, dynamic> toFirestore() {
+    return {
+      'id': id,
+      'title': title,
+      'content': content,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+      'userId': userId,
+    };
+  }
+
+  /// Create Note from Firestore document
+  static Note fromFirestore(Map<String, dynamic> data) {
+    final note = Note();
+    note.id = data['id'] ?? Isar.autoIncrement;
+    note.title = data['title'] ?? '';
+    note.content = data['content'] ?? '';
+    note.createdAt = DateTime.parse(data['createdAt'] ?? DateTime.now().toIso8601String());
+    note.updatedAt = DateTime.parse(data['updatedAt'] ?? DateTime.now().toIso8601String());
+    note.userId = data['userId'] ?? '';
+    note.syncStatus = 'synced';
+    note.lastSyncedAt = DateTime.now();
+    return note;
+  }
+
   @override
   String toString() {
-    return 'Note(id: $id, title: "$title", content: "${content.substring(0, content.length > 50 ? 50 : content.length)}...", createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Note(id: $id, title: "$title", content: "${content.substring(0, content.length > 50 ? 50 : content.length)}...", createdAt: $createdAt, updatedAt: $updatedAt, syncStatus: $syncStatus)';
   }
 }

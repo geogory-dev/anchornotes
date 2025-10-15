@@ -1,15 +1,36 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/isar_service.dart';
+import '../services/sync_service.dart';
 import '../theme/app_colors.dart';
 import 'note_editor_screen.dart';
 
 /// HomeScreen
 /// Main dashboard after authentication
-/// For Phase 2: Simple screen with logout and access to the note editor
-/// Phase 3 will expand this to show notes list
-class HomeScreen extends StatelessWidget {
+/// Phase 2: Simple screen with logout and access to the note editor
+/// Phase 3: Added cloud sync initialization
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final SyncService _syncService = SyncService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize sync service when home screen loads
+    _syncService.initialize();
+  }
+
+  @override
+  void dispose() {
+    _syncService.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

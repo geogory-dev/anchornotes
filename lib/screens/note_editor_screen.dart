@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/note.dart';
 import '../services/isar_service.dart';
+import '../services/sync_service.dart';
+import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 
 /// NoteEditorScreen
@@ -21,6 +23,8 @@ class NoteEditorScreen extends StatefulWidget {
 
 class _NoteEditorScreenState extends State<NoteEditorScreen> {
   final IsarService _isarService = IsarService();
+  final SyncService _syncService = SyncService();
+  final AuthService _authService = AuthService();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
   
@@ -87,7 +91,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     });
   }
 
-  /// Save the note to the database
+  /// Save the note to the database and sync to cloud
   Future<void> _saveNote() async {
     if (_currentNote == null) return;
 
@@ -98,8 +102,11 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         title: _titleController.text,
         content: _contentController.text,
         updatedAt: DateTime.now(),
+        userId: _authService.userId ?? '',
+        syncStatus: 'pending', // Mark as pending sync
       );
 
+      // Save locally first
       await _isarService.updateNote(updatedNote);
       
       setState(() {
@@ -107,7 +114,13 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         _isSaving = false;
       });
 
-      debugPrint('Note saved: ${updatedNote.id}');
+      debugPrint('Note saved locally: ${updatedNote.id}');
+
+      // Sync to cloud in background
+      _syncService.pushNote(updatedNote).catchError((error) {
+        debugPrint('Sync error: $error');
+        // Don't show error to user, will retry later
+      });
     } catch (e) {
       debugPrint('Error saving note: $e');
       setState(() => _isSaving = false);
@@ -213,6 +226,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
   /// Build the sync status indicator
   Widget _buildSyncIndicator() {
+    final syncStatus = _currentNote?.syncStatus ?? 'pending';
+    
     if (_isSaving) {
       return Row(
         mainAxisSize: MainAxisSize.min,
@@ -242,23 +257,42 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       );
     }
 
-    // Saved indicator
+    // Show sync status
+    IconData icon;
+    Color color;
+    String text;
+
+    switch (syncStatus) {
+      case 'synced':
+        icon = Icons.cloud_done;
+        color = AppColors.success;
+        text = 'Synced';
+        break;
+      case 'pending':
+        icon = Icons.cloud_queue;
+        color = AppColors.accent;
+        text = 'Pending';
+        break;
+      case 'error':
+        icon = Icons.cloud_off;
+        color = AppColors.error;
+        text = 'Offline';
+        break;
+      default:
+        icon = Icons.cloud_queue;
+        color = AppColors.accent;
+        text = 'Pending';
+    }
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: const BoxDecoration(
-            color: AppColors.success,
-            shape: BoxShape.circle,
-          ),
-        ),
+        Icon(icon, size: 16, color: color),
         const SizedBox(width: 8),
         Text(
-          'Saved',
+          text,
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: AppColors.success,
+            color: color,
           ),
         ),
       ],
