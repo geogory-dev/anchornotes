@@ -1,0 +1,21 @@
+# Your Firebase Configuration Values
+# Copy these into lib/firebase_options.dart
+
+From the screenshot you provided:
+- Project ID: anchornote-4d28f
+- Messaging Sender ID: 449700785647
+- API Key: AIzaSyD5OezekMxQlXhmIEQZaHD-RUaFIRSI2Cw
+
+Still need to find (scroll down on the same page):
+- App ID: Look for something like "1:449700785647:android:xxxxx"
+- Storage Bucket: Should be "anchornote-4d28f.appspot.com"
+
+Once you have all values, update lib/firebase_options.dart like this:
+
+static const FirebaseOptions android = FirebaseOptions(
+  apiKey: 'AIzaSyD5OezekMxQlXhmIEQZaHD-RUaFIRSI2Cw',
+  appId: 'YOUR_APP_ID_HERE',  // Find this below on the same page
+  messagingSenderId: '449700785647',
+  projectId: 'anchornote-4d28f',
+  storageBucket: 'anchornote-4d28f.appspot.com',
+);
