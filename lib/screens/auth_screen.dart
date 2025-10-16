@@ -58,10 +58,12 @@ class _AuthScreenState extends State<AuthScreen> {
       }
       // Navigation handled by AuthGate
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -76,10 +78,12 @@ class _AuthScreenState extends State<AuthScreen> {
       await _authService.signInWithGoogle();
       // Navigation handled by AuthGate
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -287,7 +291,7 @@ class _AuthScreenState extends State<AuthScreen> {
         const SizedBox(height: 16),
         // Logo text
         Text(
-          'SyncPad',
+          'AnchorNotes',
           style: Theme.of(context).textTheme.headlineLarge,
         ),
       ],

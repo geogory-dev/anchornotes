@@ -1,3 +1,5 @@
+import com.android.build.gradle.LibraryExtension
+
 buildscript {
     repositories {
         google()
@@ -21,6 +23,15 @@ rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
+    
+    // Fix for isar_flutter_libs namespace issue
+    if (project.name == "isar_flutter_libs") {
+        pluginManager.withPlugin("com.android.library") {
+            configure<LibraryExtension> {
+                namespace = "dev.isar.isar_flutter_libs"
+            }
+        }
+    }
 }
 subprojects {
     project.evaluationDependsOn(":app")

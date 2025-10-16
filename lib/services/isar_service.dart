@@ -1,6 +1,7 @@
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/note.dart';
+import '../models/folder.dart';
 
 /// IsarService
 /// Singleton service for managing Isar database operations
@@ -32,7 +33,7 @@ class IsarService {
     final dir = await getApplicationDocumentsDirectory();
     
     _isar = await Isar.open(
-      [NoteSchema],
+      [NoteSchema, FolderSchema],
       directory: dir.path,
       name: 'syncpad_db',
     );
@@ -55,10 +56,39 @@ class IsarService {
     });
   }
 
-  /// Get a note by ID
+  /// Get a note by local ID
   /// Returns null if not found
   Future<Note?> getNote(int id) async {
     return await isar.notes.get(id);
+  }
+
+  /// Get a note by server ID (Firestore document ID)
+  /// Returns null if not found
+  Future<Note?> getNoteByServerId(String serverId) async {
+    return await isar.notes
+        .filter()
+        .serverIdEqualTo(serverId)
+        .findFirst();
+  }
+
+  /// Delete a note by its Firestore serverId
+  /// Returns true if deleted, false if not found
+  Future<bool> deleteNoteByServerId(String serverId) async {
+    return await isar.writeTxn(() async {
+      final count = await isar.notes
+          .filter()
+          .serverIdEqualTo(serverId)
+          .deleteAll();
+      return count > 0;
+    });
+  }
+
+  /// Create or update a note (upsert)
+  /// Simplifies sync logic
+  Future<int> createOrUpdateNote(Note note) async {
+    return await isar.writeTxn(() async {
+      return await isar.notes.put(note);
+    });
   }
 
   /// Get all notes
@@ -135,19 +165,4 @@ class IsarService {
     }).toList();
   }
 
-  /// Create initial welcome note if no notes exist
-  Future<void> createWelcomeNoteIfNeeded(String userId) async {
-    final count = await getNotesCount();
-    
-    if (count == 0) {
-      // Create welcome note
-      final welcomeNote = Note()
-        ..title = 'Welcome to SyncPad'
-        ..content = 'Start writing your thoughts here...\n\nThis is your offline-first note-taking app.'
-        ..userId = userId
-        ..syncStatus = 'pending';
-      
-      await createNote(welcomeNote);
-    }
-  }
 }

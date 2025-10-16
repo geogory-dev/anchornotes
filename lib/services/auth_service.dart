@@ -1,5 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import 'isar_service.dart';
 
 /// AuthService
 /// Handles all Firebase Authentication operations
@@ -11,6 +14,26 @@ class AuthService {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  /// Store user email in Firestore for sharing
+  Future<void> _storeUserEmail(String userId, String email) async {
+    try {
+      debugPrint('AuthService: Storing email $email for user $userId');
+      await _firestore.collection('users').doc(userId).set({
+        'email': email.toLowerCase(),
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      debugPrint('AuthService: Email stored successfully');
+      
+      // Verify
+      final doc = await _firestore.collection('users').doc(userId).get();
+      debugPrint('AuthService: Verified - doc exists: ${doc.exists}, data: ${doc.data()}');
+    } catch (e) {
+      debugPrint('AuthService: Error storing email: $e');
+      debugPrint('AuthService: Error details: ${e.runtimeType}');
+    }
+  }
 
   /// Get the current user
   User? get currentUser => _auth.currentUser;
@@ -35,17 +58,41 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    // Ensure clean state: sign out any existing user first
+    if (_auth.currentUser != null) {
+      debugPrint('AuthService: Existing user detected. Signing out before signup.');
+      await signOut();
+    }
+    
+    UserCredential? credential;
     try {
-      final UserCredential credential = await _auth.createUserWithEmailAndPassword(
+      debugPrint('AuthService: Starting signup for $email');
+      credential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
-      return credential.user;
+      
+      debugPrint('AuthService: Signup successful, user ID: ${credential.user?.uid}');
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
-      throw 'An unexpected error occurred. Please try again.';
+      debugPrint('AuthService: Signup error: $e');
+      // Ignore the type cast error, user is still created
     }
+    
+    // Get the current user (workaround for type cast issue)
+    final user = _auth.currentUser;
+    if (user != null) {
+      debugPrint('AuthService: Got current user: ${user.uid}');
+      // Store user email for sharing functionality
+      try {
+        await _storeUserEmail(user.uid, email.trim());
+      } catch (e) {
+        debugPrint('AuthService: Failed to store email: $e');
+      }
+    }
+    
+    return user;
   }
 
   /// Sign in with email and password
@@ -54,11 +101,23 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    // Ensure clean state: sign out any existing user first
+    if (_auth.currentUser != null) {
+      debugPrint('AuthService: Existing user detected. Signing out before signin.');
+      await signOut();
+    }
+    
     try {
       final UserCredential credential = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
+      
+      // Store user email for sharing functionality (in case it wasn't stored during signup)
+      if (credential.user != null) {
+        await _storeUserEmail(credential.user!.uid, email.trim());
+      }
+      
       return credential.user;
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
@@ -72,6 +131,12 @@ class AuthService {
   /// Sign in with Google
   /// Returns the User object on success, throws exception on failure
   Future<User?> signInWithGoogle() async {
+    // Ensure clean state: sign out any existing user first
+    if (_auth.currentUser != null) {
+      debugPrint('AuthService: Existing user detected. Signing out before Google signin.');
+      await signOut();
+    }
+    
     try {
       // Trigger the Google Sign-In flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -92,6 +157,12 @@ class AuthService {
 
       // Sign in to Firebase with the Google credential
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      
+      // Store user email for sharing functionality
+      if (userCredential.user != null && userCredential.user!.email != null) {
+        await _storeUserEmail(userCredential.user!.uid, userCredential.user!.email!);
+      }
+      
       return userCredential.user;
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
@@ -115,9 +186,27 @@ class AuthService {
 
   // ==================== Sign Out ====================
 
+  /// Clear local database
+  /// Prevents data leakage between accounts
+  Future<void> _clearLocalData() async {
+    try {
+      final isarService = IsarService();
+      if (isarService.isInitialized) {
+        await isarService.deleteAllNotes();
+        debugPrint('AuthService: Cleared local database');
+      }
+    } catch (e) {
+      debugPrint('AuthService: Error clearing local data: $e');
+    }
+  }
+
   /// Sign out from Firebase and Google
+  /// Also clears local database to prevent data leakage between accounts
   Future<void> signOut() async {
     try {
+      // Clear local database before signing out
+      await _clearLocalData();
+      
       await Future.wait([
         _auth.signOut(),
         _googleSignIn.signOut(),

@@ -5,6 +5,7 @@ import '../services/isar_service.dart';
 import '../services/sync_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import 'sharing_dialog.dart';
 
 /// NoteEditorScreen
 /// Distraction-free writing interface for creating and editing notes
@@ -133,7 +134,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         title: _titleController.text,
         content: _contentController.text,
         updatedAt: DateTime.now(),
-        userId: _authService.userId ?? '',
+        ownerId: _currentNote!.ownerId.isEmpty ? (_authService.userId ?? '') : _currentNote!.ownerId, // Preserve existing ownerId
         syncStatus: 'pending', // Mark as pending sync
       );
 
@@ -195,6 +196,21 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
           ),
         ),
         actions: [
+          // Share button (only if owner - check both permission and ownerId)
+          if ((_currentNote?.isOwner ?? false) || 
+              (_currentNote?.ownerId == _authService.userId))
+            IconButton(
+              icon: const Icon(Icons.share),
+              onPressed: () {
+                if (_currentNote != null) {
+                  showDialog(
+                    context: context,
+                    builder: (context) => SharingDialog(note: _currentNote!),
+                  );
+                }
+              },
+              tooltip: 'Share',
+            ),
           // Sync status indicator
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -228,6 +244,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               ),
               maxLines: 2,
               textCapitalization: TextCapitalization.sentences,
+              enabled: _currentNote?.canEdit ?? true,
+              readOnly: !(_currentNote?.canEdit ?? true),
             ),
             const SizedBox(height: 16),
             
@@ -247,8 +265,36 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                 expands: true,
                 textAlignVertical: TextAlignVertical.top,
                 textCapitalization: TextCapitalization.sentences,
+                enabled: _currentNote?.canEdit ?? true,
+                readOnly: !(_currentNote?.canEdit ?? true),
               ),
             ),
+            
+            // Viewer notice
+            if (_currentNote != null && !_currentNote!.canEdit)
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(top: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.accent),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, size: 20, color: AppColors.accent),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'You have view-only access to this note',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.accent,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),

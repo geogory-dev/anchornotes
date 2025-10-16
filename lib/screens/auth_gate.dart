@@ -7,6 +7,8 @@ import 'home_screen.dart';
 /// AuthGate
 /// Manages user session state and routes to appropriate screen
 /// Shows AuthScreen if not authenticated, HomeScreen if authenticated
+/// 
+/// Note: Data clearing is handled by AuthService before any sign-in/sign-up
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 

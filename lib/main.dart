@@ -35,10 +35,10 @@ class SyncPadApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SyncPad',
+      title: 'AnchorNotes',
       debugShowCheckedModeBanner: false,
       
-      // Apply SyncPad design system
+      // Apply AnchorNotes design system
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system, // Follow system theme

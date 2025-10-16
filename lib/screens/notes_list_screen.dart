@@ -1,16 +1,27 @@
 import 'package:flutter/material.dart';
 import '../models/note.dart';
+import '../models/folder.dart';
 import '../services/isar_service.dart';
 import '../services/sync_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
-import 'note_editor_screen.dart';
+import '../widgets/error_banner.dart';
+import '../widgets/folder_picker.dart';
+import 'rich_note_editor_screen.dart';
+import 'folders_screen.dart';
 
 /// NotesListScreen
 /// Displays all notes in a grid/list view with real-time updates
 /// Phase 4: Multi-note management
 class NotesListScreen extends StatefulWidget {
-  const NotesListScreen({super.key});
+  final String? userEmail;
+  final VoidCallback? onLogout;
+
+  const NotesListScreen({
+    super.key,
+    this.userEmail,
+    this.onLogout,
+  });
 
   @override
   State<NotesListScreen> createState() => _NotesListScreenState();
@@ -24,6 +35,7 @@ class _NotesListScreenState extends State<NotesListScreen> {
 
   String _searchQuery = '';
   bool _isRefreshing = false;
+  bool _showOnlyFavorites = false;
 
   @override
   void dispose() {
@@ -36,7 +48,8 @@ class _NotesListScreenState extends State<NotesListScreen> {
     final newNote = Note()
       ..title = ''
       ..content = ''
-      ..userId = _authService.userId ?? ''
+      ..ownerId = _authService.userId ?? ''
+      ..permission = 'owner'
       ..syncStatus = 'pending';
 
     final noteId = await _isarService.createNote(newNote);
@@ -51,7 +64,7 @@ class _NotesListScreenState extends State<NotesListScreen> {
     if (mounted) {
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => NoteEditorScreen(noteId: noteId),
+          builder: (context) => RichNoteEditorScreen(noteId: noteId),
         ),
       );
     }
@@ -81,12 +94,20 @@ class _NotesListScreenState extends State<NotesListScreen> {
     );
 
     if (confirmed == true) {
-      await _syncService.deleteNote(note.id);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Note deleted')),
-        );
+      try {
+        await _syncService.deleteNote(note.id);
+        
+        if (mounted) {
+          SuccessSnackBar.show(context, 'Note deleted successfully');
+        }
+      } catch (e) {
+        if (mounted) {
+          ErrorSnackBar.show(
+            context,
+            'Failed to delete note: ${_syncService.getErrorMessage(e)}',
+            onRetry: () => _deleteNote(note),
+          );
+        }
       }
     }
   }
@@ -97,10 +118,15 @@ class _NotesListScreenState extends State<NotesListScreen> {
     
     try {
       await _syncService.syncAll();
+      if (mounted) {
+        SuccessSnackBar.show(context, 'Notes synced successfully');
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sync error: $e')),
+        ErrorSnackBar.show(
+          context,
+          _syncService.getErrorMessage(e),
+          onRetry: _refreshNotes,
         );
       }
     } finally {
@@ -108,15 +134,93 @@ class _NotesListScreenState extends State<NotesListScreen> {
     }
   }
 
-  /// Filter notes by search query
+  /// Filter notes by search query and favorites
   List<Note> _filterNotes(List<Note> notes) {
-    if (_searchQuery.isEmpty) return notes;
+    var filtered = notes;
     
-    final query = _searchQuery.toLowerCase();
-    return notes.where((note) {
-      return note.title.toLowerCase().contains(query) ||
-             note.content.toLowerCase().contains(query);
-    }).toList();
+    // Filter by favorites first
+    if (_showOnlyFavorites) {
+      filtered = filtered.where((note) => note.isFavorite).toList();
+    }
+    
+    // Then filter by search query
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      filtered = filtered.where((note) {
+        return note.title.toLowerCase().contains(query) ||
+               note.content.toLowerCase().contains(query);
+      }).toList();
+    }
+    
+    // Sort: favorites first, then by date
+    filtered.sort((a, b) {
+      if (a.isFavorite && !b.isFavorite) return -1;
+      if (!a.isFavorite && b.isFavorite) return 1;
+      return b.updatedAt.compareTo(a.updatedAt);
+    });
+    
+    return filtered;
+  }
+
+  /// Move note to folder
+  Future<void> _moveNoteToFolder(Note note) async {
+    final result = await showDialog(
+      context: context,
+      builder: (context) => FolderPicker(
+        currentFolderId: note.folderId,
+      ),
+    );
+
+    // Check if user canceled or selected a folder
+    if (result != null && result is FolderSelection && !result.wasCanceled) {
+      try {
+        final updatedNote = note.copyWith(
+          folderId: result.folder?.folderId,
+          folderName: result.folder?.name ?? '',
+        );
+        
+        // Update local database
+        await _isarService.updateNote(updatedNote);
+        
+        // Trigger sync
+        await _syncService.pushNote(updatedNote);
+        
+        if (mounted) {
+          SuccessSnackBar.show(
+            context,
+            result.folder == null ? 'Moved to No Folder' : 'Moved to ${result.folder!.name}',
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ErrorSnackBar.show(context, 'Failed to move note: $e');
+        }
+      }
+    }
+  }
+
+  /// Toggle favorite status
+  Future<void> _toggleFavorite(Note note) async {
+    try {
+      final updatedNote = note.copyWith(isFavorite: !note.isFavorite);
+      
+      // Update local database
+      await _isarService.updateNote(updatedNote);
+      
+      // Trigger sync
+      await _syncService.pushNote(updatedNote);
+      
+      if (mounted) {
+        SuccessSnackBar.show(
+          context,
+          updatedNote.isFavorite ? 'Added to favorites' : 'Removed from favorites',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ErrorSnackBar.show(context, 'Failed to update favorite: $e');
+      }
+    }
   }
 
   @override
@@ -125,9 +229,9 @@ class _NotesListScreenState extends State<NotesListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SyncPad'),
+        title: const Text('AnchorNotes'),
         actions: [
-          // Sync status
+          // Sync status indicator
           if (_isRefreshing)
             const Padding(
               padding: EdgeInsets.all(16),
@@ -139,12 +243,13 @@ class _NotesListScreenState extends State<NotesListScreen> {
             )
           else
             IconButton(
-              icon: Icon(_getSyncIcon()),
+              icon: const Icon(Icons.refresh),
               onPressed: _refreshNotes,
-              tooltip: 'Sync',
+              tooltip: 'Refresh',
             ),
         ],
       ),
+      drawer: _buildDrawer(context, isDark),
       body: Column(
         children: [
           // Search bar
@@ -164,14 +269,16 @@ class _NotesListScreenState extends State<NotesListScreen> {
                         },
                       )
                     : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onChanged: (value) {
                 setState(() => _searchQuery = value);
               },
             ),
           ),
-
-          // Notes list
+          // Notes grid
           Expanded(
             child: StreamBuilder<List<Note>>(
               stream: _isarService.watchAllNotes(),
@@ -181,31 +288,37 @@ class _NotesListScreenState extends State<NotesListScreen> {
                 }
 
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                        const SizedBox(height: 16),
+                        Text('Error: ${snapshot.error}'),
+                      ],
+                    ),
+                  );
                 }
 
                 final allNotes = snapshot.data ?? [];
-                final notes = _filterNotes(allNotes);
+                final filteredNotes = _filterNotes(allNotes);
 
-                if (notes.isEmpty) {
+                if (filteredNotes.isEmpty) {
                   return _buildEmptyState();
                 }
 
-                return RefreshIndicator(
-                  onRefresh: _refreshNotes,
-                  child: GridView.builder(
-                    padding: const EdgeInsets.all(16),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 0.75,
-                    ),
-                    itemCount: notes.length,
-                    itemBuilder: (context, index) {
-                      return _buildNoteCard(notes[index], isDark);
-                    },
+                return GridView.builder(
+                  padding: const EdgeInsets.all(16),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 0.8,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
                   ),
+                  itemCount: filteredNotes.length,
+                  itemBuilder: (context, index) {
+                    return _buildNoteCard(filteredNotes[index], isDark);
+                  },
                 );
               },
             ),
@@ -214,37 +327,249 @@ class _NotesListScreenState extends State<NotesListScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _createNewNote,
-        tooltip: 'Create Note',
         child: const Icon(Icons.add),
       ),
     );
   }
 
-  /// Build note card
-  Widget _buildNoteCard(Note note, bool isDark) {
-    return Card(
-      child: InkWell(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => NoteEditorScreen(noteId: note.id),
+  /// Build navigation drawer
+  Widget _buildDrawer(BuildContext context, bool isDark) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : AppColors.lightPrimary,
             ),
-          );
-        },
-        onLongPress: () => _deleteNote(note),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Title
-              Text(
-                note.displayTitle,
-                style: Theme.of(context).textTheme.headlineMedium,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                const Icon(Icons.note_alt, size: 48, color: Colors.white),
+                const SizedBox(height: 8),
+                const Text(
+                  'AnchorNotes',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (widget.userEmail != null)
+                  Text(
+                    widget.userEmail!,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          // All Notes
+          ListTile(
+            leading: Icon(
+              _showOnlyFavorites ? Icons.note_outlined : Icons.note,
+              color: !_showOnlyFavorites ? AppColors.lightPrimary : null,
+            ),
+            title: const Text('All Notes'),
+            onTap: () {
+              setState(() => _showOnlyFavorites = false);
+              Navigator.pop(context);
+            },
+          ),
+          // Favorites
+          ListTile(
+            leading: Icon(
+              Icons.star,
+              color: _showOnlyFavorites ? Colors.amber : null,
+            ),
+            title: const Text('Favorites'),
+            onTap: () {
+              setState(() => _showOnlyFavorites = true);
+              Navigator.pop(context);
+            },
+          ),
+          const Divider(),
+          // Folders
+          ListTile(
+            leading: const Icon(Icons.folder),
+            title: const Text('Folders'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const FoldersScreen(),
+                ),
+              );
+            },
+          ),
+          const Divider(),
+          // Settings (placeholder)
+          ListTile(
+            leading: const Icon(Icons.settings),
+            title: const Text('Settings'),
+            onTap: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Settings coming soon!')),
+              );
+            },
+          ),
+          // Logout
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: const Text('Logout', style: TextStyle(color: Colors.red)),
+            onTap: () {
+              Navigator.pop(context);
+              widget.onLogout?.call();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            _showOnlyFavorites ? Icons.star_border : Icons.note_outlined,
+            size: 80,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _showOnlyFavorites ? 'No favorite notes yet' : 'No notes yet',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: Colors.grey[600],
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _showOnlyFavorites
+                ? 'Star some notes to see them here'
+                : 'Tap + to create your first note',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[500],
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build note card with Hero animation
+  Widget _buildNoteCard(Note note, bool isDark) {
+    return Hero(
+      tag: 'note_${note.id}',
+      child: Card(
+        child: InkWell(
+          onTap: () {
+            Navigator.of(context).push(
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) =>
+                    RichNoteEditorScreen(noteId: note.id),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  const begin = Offset(0.0, 0.1);
+                  const end = Offset.zero;
+                  const curve = Curves.easeInOut;
+                  var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                  var offsetAnimation = animation.drive(tween);
+                  
+                  return SlideTransition(
+                    position: offsetAnimation,
+                    child: FadeTransition(
+                      opacity: animation,
+                      child: child,
+                    ),
+                  );
+                },
+                transitionDuration: const Duration(milliseconds: 300),
               ),
+            );
+          },
+          onLongPress: () => _deleteNote(note),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title with menu button
+                Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          if (note.isFavorite)
+                            const Padding(
+                              padding: EdgeInsets.only(right: 8),
+                              child: Icon(
+                                Icons.star,
+                                color: Colors.amber,
+                                size: 20,
+                              ),
+                            ),
+                          Expanded(
+                            child: Text(
+                              note.displayTitle,
+                              style: Theme.of(context).textTheme.headlineMedium,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    PopupMenuButton<String>(
+                      onSelected: (value) {
+                        if (value == 'move') {
+                          _moveNoteToFolder(note);
+                        } else if (value == 'delete') {
+                          _deleteNote(note);
+                        } else if (value == 'favorite') {
+                          _toggleFavorite(note);
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'favorite',
+                          child: Row(
+                            children: [
+                              Icon(note.isFavorite ? Icons.star : Icons.star_border),
+                              const SizedBox(width: 8),
+                              Text(note.isFavorite ? 'Unfavorite' : 'Favorite'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'move',
+                          child: Row(
+                            children: [
+                              Icon(Icons.folder),
+                              SizedBox(width: 8),
+                              Text('Move to Folder'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete, color: Colors.red),
+                              SizedBox(width: 8),
+                              Text('Delete', style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               const SizedBox(height: 8),
 
               // Preview
@@ -307,55 +632,8 @@ class _NotesListScreenState extends State<NotesListScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  /// Build empty state
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.note_add_outlined,
-            size: 80,
-            color: Theme.of(context).brightness == Brightness.light
-                ? AppColors.lightTextSecondary
-                : AppColors.darkTextSecondary,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            _searchQuery.isEmpty ? 'No notes yet' : 'No notes found',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _searchQuery.isEmpty
-                ? 'Tap + to create your first note'
-                : 'Try a different search',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).brightness == Brightness.light
-                      ? AppColors.lightTextSecondary
-                      : AppColors.darkTextSecondary,
-                ),
-          ),
-        ],
       ),
     );
-  }
-
-  /// Get sync icon
-  IconData _getSyncIcon() {
-    switch (_syncService.syncStatus) {
-      case 'synced':
-        return Icons.cloud_done;
-      case 'syncing':
-        return Icons.sync;
-      case 'error':
-        return Icons.cloud_off;
-      default:
-        return Icons.cloud_queue;
-    }
   }
 
   /// Get note status icon

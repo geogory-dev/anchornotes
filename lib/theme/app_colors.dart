@@ -19,6 +19,7 @@ class AppColors {
 
   // Shared Colors (same for both themes)
   static const Color accent = Color(0xFF3498DB); // Deep blue for interactive elements
+  static const Color lightPrimary = Color(0xFF3498DB); // Primary color for light theme
   static const Color error = Color(0xFFE74C3C); // For validation messages
   static const Color success = Color(0xFF27AE60); // For sync confirmations
 

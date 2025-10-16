@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
+import '../services/isar_service.dart';
 import '../theme/app_colors.dart';
 import 'notes_list_screen.dart';
 
@@ -33,35 +34,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final AuthService authService = AuthService();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('SyncPad'),
-        actions: [
-          // User info
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Center(
-              child: Text(
-                authService.userEmail ?? 'User',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: isDark
-                          ? AppColors.darkTextSecondary
-                          : AppColors.lightTextSecondary,
-                    ),
-              ),
-            ),
-          ),
-          // Logout button
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Logout',
-            onPressed: () => _handleLogout(context),
-          ),
-        ],
-      ),
-      body: const NotesListScreen(),
+    return NotesListScreen(
+      userEmail: authService.userEmail,
+      onLogout: () => _handleLogout(context),
     );
   }
 
@@ -90,6 +66,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (confirmed == true && context.mounted) {
       try {
+        // Clear local database before logout
+        final IsarService isarService = IsarService();
+        final allNotes = await isarService.getAllNotes();
+        for (final note in allNotes) {
+          await isarService.deleteNote(note.id);
+        }
+        
         await authService.signOut();
         // Navigation handled by AuthGate
       } catch (e) {

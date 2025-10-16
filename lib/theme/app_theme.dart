@@ -152,12 +152,12 @@ class AppTheme {
     ),
     
     // Card
-    cardTheme: CardTheme(
+    cardTheme: const CardThemeData(
       color: AppColors.lightSurface,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.lightDivider, width: 1),
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+        side: BorderSide(color: AppColors.lightDivider, width: 1),
       ),
       margin: EdgeInsets.zero,
     ),
@@ -318,11 +318,11 @@ class AppTheme {
     ),
     
     // Card
-    cardTheme: CardTheme(
+    cardTheme: const CardThemeData(
       color: AppColors.darkSurface,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.all(Radius.circular(12)),
       ),
       margin: EdgeInsets.zero,
     ),
