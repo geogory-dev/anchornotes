@@ -6,6 +6,9 @@ on:
       - 'v*'  # Trigger on version tags like v1.0.0, v1.0.1, etc.
   workflow_dispatch:  # Allow manual triggering
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -39,6 +42,11 @@ jobs:
     - name: Build APK (Split per ABI)
       run: flutter build apk --release --split-per-abi --no-shrink
       
+    - name: List built APKs
+      run: |
+        echo "Built APK files:"
+        ls -la build/app/outputs/flutter-apk/
+        
     - name: Upload APK artifacts
       uses: actions/upload-artifact@v4
       with:
