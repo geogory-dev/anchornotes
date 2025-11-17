@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'services/isar_service.dart';
+import 'services/settings_service.dart';
 import 'screens/auth_gate.dart';
+import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
 
 /// SyncPad - Offline-First Note-Taking App
@@ -26,11 +28,37 @@ void main() async {
   // Initialize Isar database
   await IsarService().init();
   
+  // Initialize settings service
+  await SettingsService().init();
+  
   runApp(const SyncPadApp());
 }
 
-class SyncPadApp extends StatelessWidget {
+class SyncPadApp extends StatefulWidget {
   const SyncPadApp({super.key});
+
+  @override
+  State<SyncPadApp> createState() => _SyncPadAppState();
+}
+
+class _SyncPadAppState extends State<SyncPadApp> {
+  final SettingsService _settingsService = SettingsService();
+
+  @override
+  void initState() {
+    super.initState();
+    _settingsService.addListener(_onSettingsChanged);
+  }
+
+  @override
+  void dispose() {
+    _settingsService.removeListener(_onSettingsChanged);
+    super.dispose();
+  }
+
+  void _onSettingsChanged() {
+    setState(() {}); // Rebuild app when settings change
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,10 +69,16 @@ class SyncPadApp extends StatelessWidget {
       // Apply AnchorNotes design system
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system, // Follow system theme
+      themeMode: _settingsService.themeMode, // Real-time theme
       
-      // Use AuthGate to manage authentication state
-      home: const AuthGate(),
+      // Define routes
+      routes: {
+        '/': (context) => const SplashScreen(),
+        '/auth': (context) => const AuthGate(),
+      },
+      
+      // Use SplashScreen as initial route
+      initialRoute: '/',
     );
   }
 }

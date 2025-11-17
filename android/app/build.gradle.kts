@@ -25,7 +25,7 @@ android {
         applicationId = "com.example.anchornotes"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion  // Required for Firebase
+        minSdk = 26  // Required for adaptive icons and Firebase
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

@@ -100,159 +100,201 @@ class _AuthScreenState extends State<AuthScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Logo
-                  _buildLogo(isDark),
-                  const SizedBox(height: 32),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? [
+                    const Color(0xFF1A1A1A),
+                    const Color(0xFF2D2D2D),
+                  ]
+                : [
+                    const Color(0xFFF8F9FA),
+                    Colors.white,
+                  ],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 40),
+                    // Logo
+                    _buildLogo(isDark),
+                    const SizedBox(height: 40),
 
-                  // Heading
-                  Text(
-                    _isLogin ? 'Welcome Back' : 'Create Account',
-                    style: Theme.of(context).textTheme.headlineLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 32),
+                    // Heading
+                    Text(
+                      _isLogin ? 'Welcome Back' : 'Create Account',
+                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    // Subtitle
+                    Text(
+                      _isLogin 
+                          ? 'Sign in to continue to your notes'
+                          : 'Get started with your note-taking journey',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
 
-                  // Error message
-                  if (_errorMessage != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.error.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.error),
+                    // Error message
+                    if (_errorMessage != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.error),
+                        ),
+                        child: Text(
+                          _errorMessage!,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.error,
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                      child: Text(
-                        _errorMessage!,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.error,
-                            ),
-                        textAlign: TextAlign.center,
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Email field
+                    TextFormField(
+                      controller: _emailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        hintText: 'your@email.com',
                       ),
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      enabled: !_isLoading,
+                      validator: (value) => AuthService.validateEmail(value ?? ''),
                     ),
                     const SizedBox(height: 16),
-                  ],
 
-                  // Email field
-                  TextFormField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      hintText: 'your@email.com',
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    enabled: !_isLoading,
-                    validator: (value) => AuthService.validateEmail(value ?? ''),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Password field
-                  TextFormField(
-                    controller: _passwordController,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      hintText: 'Enter your password',
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
-                    ),
-                    obscureText: _obscurePassword,
-                    textInputAction: TextInputAction.done,
-                    enabled: !_isLoading,
-                    validator: (value) => AuthService.validatePassword(value ?? ''),
-                    onFieldSubmitted: (_) => _handleEmailAuth(),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Primary button (Login/Register)
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _handleEmailAuth,
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : Text(_isLogin ? 'Login / Continue' : 'Create Account'),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Toggle mode button
-                  TextButton(
-                    onPressed: _isLoading ? null : _toggleMode,
-                    child: Text(
-                      _isLogin
-                          ? 'Create an Account'
-                          : 'Already have an account? Login',
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Divider
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Divider(
-                          color: isDark ? AppColors.darkDivider : AppColors.lightDivider,
+                    // Password field
+                    TextFormField(
+                      controller: _passwordController,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        hintText: 'Enter your password',
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'or',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: isDark
-                                    ? AppColors.darkTextSecondary
-                                    : AppColors.lightTextSecondary,
+                      obscureText: _obscurePassword,
+                      textInputAction: TextInputAction.done,
+                      enabled: !_isLoading,
+                      validator: (value) => AuthService.validatePassword(value ?? ''),
+                      onFieldSubmitted: (_) => _handleEmailAuth(),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Primary button (Login/Register)
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _handleEmailAuth,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
-                        ),
+                            )
+                          : Text(_isLogin ? 'Login / Continue' : 'Create Account'),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Toggle mode button
+                    TextButton(
+                      onPressed: _isLoading ? null : _toggleMode,
+                      child: Text(
+                        _isLogin
+                            ? 'Create an Account'
+                            : 'Already have an account? Login',
                       ),
-                      Expanded(
-                        child: Divider(
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Divider
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Divider(
+                            color: isDark ? AppColors.darkDivider : AppColors.lightDivider,
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'or',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: isDark
+                                      ? AppColors.darkTextSecondary
+                                      : AppColors.lightTextSecondary,
+                                ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Divider(
+                            color: isDark ? AppColors.darkDivider : AppColors.lightDivider,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Google Sign-In button
+                    OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _handleGoogleSignIn,
+                      icon: Image.asset(
+                        'assets/google_logo.png',
+                        height: 20,
+                        width: 20,
+                      ),
+                      label: const Text('Sign in with Google'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: BorderSide(
                           color: isDark ? AppColors.darkDivider : AppColors.lightDivider,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Google Sign-In button
-                  OutlinedButton.icon(
-                    onPressed: _isLoading ? null : _handleGoogleSignIn,
-                    icon: Image.asset(
-                      'assets/google_logo.png',
-                      height: 20,
-                      width: 20,
                     ),
-                    label: const Text('Sign in with Google'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      side: BorderSide(
-                        color: isDark ? AppColors.darkDivider : AppColors.lightDivider,
-                      ),
-                    ),
-                  ),
-                ],
+                    const SizedBox(height: 40),
+                  ],
+                ),
               ),
             ),
           ),
@@ -261,30 +303,32 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  /// Build the SyncPad logo
+  /// Build the AnchorNotes logo
   Widget _buildLogo(bool isDark) {
     return Column(
       children: [
-        // Logo icon
+        // Logo icon using launcher icon
         Container(
-          width: 60,
-          height: 60,
+          width: 80,
+          height: 80,
           decoration: BoxDecoration(
-            color: AppColors.accent.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColors.accent,
-              width: 2,
-            ),
-          ),
-          child: Center(
-            child: Text(
-              'S',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: AppColors.accent,
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
               ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Image.asset(
+              'assets/launcher_icons/android/ic_launcher.png',
+              width: 76,
+              height: 76,
+              fit: BoxFit.cover,
             ),
           ),
         ),
@@ -292,7 +336,18 @@ class _AuthScreenState extends State<AuthScreen> {
         // Logo text
         Text(
           'AnchorNotes',
-          style: Theme.of(context).textTheme.headlineLarge,
+          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : const Color(0xFF1A1A1A),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Tagline
+        Text(
+          'Your notes, anchored',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: isDark ? Colors.grey[400] : Colors.grey[600],
+          ),
         ),
       ],
     );

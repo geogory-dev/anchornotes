@@ -4,11 +4,13 @@ import '../models/folder.dart';
 import '../services/isar_service.dart';
 import '../services/sync_service.dart';
 import '../services/auth_service.dart';
+import '../services/settings_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/error_banner.dart';
 import '../widgets/folder_picker.dart';
 import 'rich_note_editor_screen.dart';
 import 'folders_screen.dart';
+import 'settings_screen.dart';
 
 /// NotesListScreen
 /// Displays all notes in a grid/list view with real-time updates
@@ -31,6 +33,7 @@ class _NotesListScreenState extends State<NotesListScreen> {
   final IsarService _isarService = IsarService();
   final SyncService _syncService = SyncService();
   final AuthService _authService = AuthService();
+  final SettingsService _settingsService = SettingsService();
   final TextEditingController _searchController = TextEditingController();
 
   String _searchQuery = '';
@@ -38,9 +41,52 @@ class _NotesListScreenState extends State<NotesListScreen> {
   bool _showOnlyFavorites = false;
 
   @override
+  void initState() {
+    super.initState();
+    _settingsService.addListener(_onSettingsChanged);
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
+    _settingsService.removeListener(_onSettingsChanged);
+    _syncService.dispose();
     super.dispose();
+  }
+
+  void _onSettingsChanged() {
+    setState(() {}); // Rebuild when settings change
+  }
+
+  /// Build grid view
+  Widget _buildGridView(List<Note> notes, bool isDark) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.8,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
+      itemCount: notes.length,
+      itemBuilder: (context, index) {
+        return _buildNoteCard(notes[index], isDark);
+      },
+    );
+  }
+
+  /// Build list view
+  Widget _buildListView(List<Note> notes, bool isDark) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: notes.length,
+      itemBuilder: (context, index) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _buildNoteCardList(notes[index], isDark),
+        );
+      },
+    );
   }
 
   /// Create a new note
@@ -255,27 +301,44 @@ class _NotesListScreenState extends State<NotesListScreen> {
           // Search bar
           Padding(
             padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search notes...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              onChanged: (value) {
-                setState(() => _searchQuery = value);
-              },
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search notes...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Colors.transparent,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                onChanged: (value) {
+                  setState(() => _searchQuery = value);
+                },
+              ),
             ),
           ),
           // Notes grid
@@ -307,27 +370,34 @@ class _NotesListScreenState extends State<NotesListScreen> {
                   return _buildEmptyState();
                 }
 
-                return GridView.builder(
-                  padding: const EdgeInsets.all(16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.8,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                  ),
-                  itemCount: filteredNotes.length,
-                  itemBuilder: (context, index) {
-                    return _buildNoteCard(filteredNotes[index], isDark);
-                  },
-                );
+                return _settingsService.isGridView 
+                    ? _buildGridView(filteredNotes, isDark)
+                    : _buildListView(filteredNotes, isDark);
               },
             ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _createNewNote,
-        child: const Icon(Icons.add),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: _createNewNote,
+          icon: const Icon(Icons.add),
+          label: const Text('New Note'),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
       ),
     );
   }
@@ -346,8 +416,30 @@ class _NotesListScreenState extends State<NotesListScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                const Icon(Icons.note_alt, size: 48, color: Colors.white),
-                const SizedBox(height: 8),
+                // Launcher icon instead of note icon
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.asset(
+                      'assets/launcher_icons/android/ic_launcher.png',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 const Text(
                   'AnchorNotes',
                   style: TextStyle(
@@ -406,14 +498,16 @@ class _NotesListScreenState extends State<NotesListScreen> {
             },
           ),
           const Divider(),
-          // Settings (placeholder)
+          // Settings
           ListTile(
             leading: const Icon(Icons.settings),
             title: const Text('Settings'),
             onTap: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Settings coming soon!')),
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
+                ),
               );
             },
           ),
@@ -436,27 +530,62 @@ class _NotesListScreenState extends State<NotesListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            _showOnlyFavorites ? Icons.star_border : Icons.note_outlined,
-            size: 80,
-            color: Colors.grey[400],
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              _showOnlyFavorites ? Icons.star_border : Icons.note_outlined,
+              size: 60,
+              color: Theme.of(context).primaryColor,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           Text(
             _showOnlyFavorites ? 'No favorite notes yet' : 'No notes yet',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Colors.grey[600],
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[700],
                 ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             _showOnlyFavorites
                 ? 'Star some notes to see them here'
-                : 'Tap + to create your first note',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                : 'Tap the button to create your first note',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Colors.grey[500],
                 ),
+            textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 24),
+          if (!_showOnlyFavorites)
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                onPressed: _createNewNote,
+                icon: const Icon(Icons.add),
+                label: const Text('Create First Note'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -466,9 +595,24 @@ class _NotesListScreenState extends State<NotesListScreen> {
   Widget _buildNoteCard(Note note, bool isDark) {
     return Hero(
       tag: 'note_${note.id}',
-      child: Card(
-        child: InkWell(
-          onTap: () {
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: InkWell(
+            onTap: () {
             Navigator.of(context).push(
               PageRouteBuilder(
                 pageBuilder: (context, animation, secondaryAnimation) =>
@@ -495,7 +639,7 @@ class _NotesListScreenState extends State<NotesListScreen> {
           onLongPress: () => _deleteNote(note),
           borderRadius: BorderRadius.circular(12),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -633,6 +777,7 @@ class _NotesListScreenState extends State<NotesListScreen> {
         ),
       ),
       ),
+      ),
     );
   }
 
@@ -680,5 +825,174 @@ class _NotesListScreenState extends State<NotesListScreen> {
     } else {
       return '${timestamp.month}/${timestamp.day}/${timestamp.year}';
     }
+  }
+
+  /// Build note card for list view
+  Widget _buildNoteCardList(Note note, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: InkWell(
+          onTap: () {
+            Navigator.of(context).push(
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) =>
+                    RichNoteEditorScreen(noteId: note.id),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  const begin = Offset(0.0, 0.1);
+                  const end = Offset.zero;
+                  const curve = Curves.easeInOut;
+                  var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                  var offsetAnimation = animation.drive(tween);
+                  
+                  return SlideTransition(
+                    position: offsetAnimation,
+                    child: child,
+                  );
+                },
+                transitionDuration: const Duration(milliseconds: 300),
+              ),
+            );
+          },
+          onLongPress: () => _deleteNote(note),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Note content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title with favorite
+                      Row(
+                        children: [
+                          if (note.isFavorite)
+                            const Padding(
+                              padding: EdgeInsets.only(right: 8),
+                              child: Icon(
+                                Icons.star,
+                                color: Colors.amber,
+                                size: 20,
+                              ),
+                            ),
+                          Expanded(
+                            child: Text(
+                              note.displayTitle,
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      
+                      // Preview
+                      Text(
+                        note.preview,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.lightTextSecondary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      
+                      const SizedBox(height: 12),
+                      
+                      // Footer
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Timestamp
+                          Text(
+                            _formatTimestamp(note.updatedAt),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          
+                          // Sync status and menu
+                          Row(
+                            children: [
+                              Icon(
+                                _getNoteStatusIcon(note),
+                                size: 16,
+                                color: _getNoteStatusColor(note),
+                              ),
+                              const SizedBox(width: 8),
+                              PopupMenuButton<String>(
+                                onSelected: (value) {
+                                  if (value == 'move') {
+                                    _moveNoteToFolder(note);
+                                  } else if (value == 'delete') {
+                                    _deleteNote(note);
+                                  } else if (value == 'favorite') {
+                                    _toggleFavorite(note);
+                                  }
+                                },
+                                itemBuilder: (context) => [
+                                  PopupMenuItem(
+                                    value: 'favorite',
+                                    child: Row(
+                                      children: [
+                                        Icon(note.isFavorite ? Icons.star : Icons.star_border),
+                                        const SizedBox(width: 8),
+                                        Text(note.isFavorite ? 'Unfavorite' : 'Favorite'),
+                                      ],
+                                    ),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'move',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.folder),
+                                        SizedBox(width: 8),
+                                        Text('Move to Folder'),
+                                      ],
+                                    ),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.delete, color: Colors.red),
+                                        SizedBox(width: 8),
+                                        Text('Delete', style: TextStyle(color: Colors.red)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
