@@ -3,8 +3,13 @@ name: Build and Release APK
 on:
   push:
     tags:
-      - 'v*'  # Trigger on version tags like v1.0.0, v1.0.1, etc.
-  workflow_dispatch:  # Allow manual triggering
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
 
 permissions:
   contents: write
