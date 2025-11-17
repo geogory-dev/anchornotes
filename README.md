@@ -79,6 +79,16 @@
 - **Success Feedback** - Visual confirmation for actions
 - **Auto-Save** - Never lose your work (2-second debounce)
 
+### ⚙️ Settings & Customization
+- **Theme Selection** - Choose between Light, Dark, or System default themes
+- **Default View Mode** - Switch between Grid view and List view for notes
+- **Font Size Adjustment** - Customize text size from 12px to 20px
+- **Auto-Save Toggle** - Enable or disable automatic note saving
+- **Export Format Preference** - Set default export format (PDF, TXT, or MD)
+- **Sync Status** - Monitor cloud synchronization status
+- **Cache Management** - Clear temporary files to free up storage
+- **Version Information** - View app version and build details
+
 ### 🔐 Security & Privacy
 - **Firebase Authentication** - Email/password and Google Sign-In
 - **Firestore Security Rules** - Permission-based access control
