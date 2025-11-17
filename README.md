@@ -100,12 +100,12 @@
 ## 📸 Screenshots
 
 ### 📱 Main Interface
-![Homepage](screenshots/Homepage.png)
-![Rich Editor](screenshots/RichEditor.png)
-![SideBar](screenshots/SideBar.png)
+<img src="screenshots/Homepage.png" alt="Homepage" width="300"/>
+<img src="screenshots/RichEditor.png" alt="Rich Editor" width="300"/>
+<img src="screenshots/SideBar.png" alt="SideBar" width="300"/>
 
 ### 🌙 Dark Mode
-![Dark Mode](screenshots/DarkMode.png)
+<img src="screenshots/DarkMode.png" alt="Dark Mode" width="300"/>
 
 ---
 
