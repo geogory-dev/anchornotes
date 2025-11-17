@@ -100,19 +100,12 @@
 ## 📸 Screenshots
 
 ### 📱 Main Interface
-![Home Light](screenshots/home_light.png)
-![Rich Editor](screenshots/editor_light.png)
-![Folders](screenshots/folders.png)
+![Homepage](screenshots/Homepage.png)
+![Rich Editor](screenshots/RichEditor.png)
+![SideBar](screenshots/SideBar.png)
 
 ### 🌙 Dark Mode
-![Home Dark](screenshots/home_dark.png)
-![Editor Dark](screenshots/editor_dark.png)
-![Settings](screenshots/settings.png)
-
-### ✨ Key Features
-![Search](screenshots/search.png)
-![Export](screenshots/export.png)
-![Share](screenshots/share.png)
+![Dark Mode](screenshots/DarkMode.png)
 
 ---
 
