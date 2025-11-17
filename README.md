@@ -100,35 +100,19 @@
 ## 📸 Screenshots
 
 ### 📱 Main Interface
-<div align="center">
-  <img src="screenshots/home_light.png" alt="Home Screen Light Mode" width="200"/>
-  <img src="screenshots/editor_light.png" alt="Rich Text Editor" width="200"/>
-  <img src="screenshots/folders.png" alt="Folder Management" width="200"/>
-</div>
+![Home Light](screenshots/home_light.png)
+![Rich Editor](screenshots/editor_light.png)
+![Folders](screenshots/folders.png)
 
 ### 🌙 Dark Mode
-<div align="center">
-  <img src="screenshots/home_dark.png" alt="Home Screen Dark Mode" width="200"/>
-  <img src="screenshots/editor_dark.png" alt="Rich Text Editor Dark Mode" width="200"/>
-  <img src="screenshots/settings.png" alt="Settings Screen" width="200"/>
-</div>
+![Home Dark](screenshots/home_dark.png)
+![Editor Dark](screenshots/editor_dark.png)
+![Settings](screenshots/settings.png)
 
 ### ✨ Key Features
-<div align="center">
-  <img src="screenshots/search.png" alt="Search Functionality" width="200"/>
-  <img src="screenshots/export.png" alt="Export Options" width="200"/>
-  <img src="screenshots/share.png" alt="Share & Collaborate" width="200"/>
-</div>
-
-> 📸 **Screenshots coming soon!** This section will be populated with actual app screenshots once the v1.0.4 release is ready.
-
-### 📐 Screenshot Guidelines
-- **Resolution**: 1080x1920 (portrait) 
-- **Format**: PNG for optimal quality
-- **Content**: Real data and usage scenarios
-- **Consistency**: Uniform device frames across all screenshots
-
-*See `screenshots/README.md` for detailed guidelines on adding screenshots.*
+![Search](screenshots/search.png)
+![Export](screenshots/export.png)
+![Share](screenshots/share.png)
 
 ---
 
